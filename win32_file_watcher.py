@@ -21,6 +21,8 @@ import logging
 import os
 import threading
 
+from google.appengine.tools.devappserver2 import watcher_common
+
 # FindNextChangeNotification constants (defined in FileAPI.h):
 _FILE_NOTIFY_CHANGE_FILE_NAME = 0x00000001
 _FILE_NOTIFY_CHANGE_DIR_NAME = 0x00000002
@@ -137,6 +139,26 @@ class Win32FileWatcher(object):
     self._stop = threading.Event()
     self._change_event = threading.Event()
     self._thread = None
+    self._watcher_ignore_re = None
+    self._skip_files_re = None
+
+  def set_watcher_ignore_re(self, watcher_ignore_re):
+    """Allows the file watcher to ignore a custom pattern set by the user.
+
+    Args:
+      watcher_ignore_re: A RegexObject that optionally defines a pattern for the
+          file watcher to ignore.
+    """
+    self._watcher_ignore_re = watcher_ignore_re
+
+  def set_skip_files_re(self, skip_files_re):
+    """Allows the file watcher to respect skip_files in app.yaml.
+
+    Args:
+      skip_files_re: The skip_files field of current ModuleConfiguration,
+          defined in app.yaml.
+    """
+    self._skip_files_re = skip_files_re
 
   def start(self):
     """Start watching the directory for changes."""
@@ -207,6 +229,26 @@ class Win32FileWatcher(object):
       if result != 0 and size_returned.value != 0:
         additional_changes = _parse_buffer(buff)
 
+        filenames = [
+          f for f in additional_changes
+          if not self._path_ignored(f)
+        ]
+
+        additional_changes = set(filenames)
+
         with self._lock:
           self._change_set |= additional_changes
           self._change_event.set()
+
+  def _path_ignored(self, file_path):
+    """Determines if a path is ignored or not.
+
+    Args:
+      file_path: The relative (string) filepath.
+
+    Returns:
+      Boolean, True if ignored else False.
+    """
+
+    return watcher_common.ignore_file(
+        file_path, self._skip_files_re, self._watcher_ignore_re)
