@@ -182,7 +182,15 @@ class _MetricsLogger(object):
     self._support_datastore_emulator = support_datastore_emulator
     self._datastore_data_type = datastore_data_type
     self._use_ssl = use_ssl
-    self._cmd_args = json.dumps(vars(cmd_args)) if cmd_args else None
+    if cmd_args:
+      cmd_args_dict = vars(cmd_args).copy()
+      for key in ['skip_files_re', 'watcher_ignore_re']:
+        if key in cmd_args_dict:
+          del cmd_args_dict[key]
+      _cmd_args = json.dumps(cmd_args_dict)
+    else:
+      _cmd_args = None
+    self._cmd_args = _cmd_args
     self._multi_module = multi_module
     self._dispatch_config = dispatch_config
     self._category = category

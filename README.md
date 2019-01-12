@@ -31,3 +31,4 @@ cloud-datastore-emulator 2.0.2
 core 2018.12.07
 gsutil 4.34
 ```
+To fix this bug please apply changes with this commit on `metrics.py`
